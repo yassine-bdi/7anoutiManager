@@ -46,6 +46,40 @@ body {
     padding: 22px;
 }
 
+.mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 56;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(28, 93, 136, 0.35);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(6px);
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.mobile-menu-toggle span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    border-radius: 999px;
+    background: #1c5d88;
+}
+
+.mobile-sidebar-backdrop {
+    display: none;
+}
+
+.mobile-sidebar-close {
+    display: none;
+}
+
 .app-glow {
     position: absolute;
     border-radius: 999px;
@@ -275,6 +309,28 @@ body {
 
 .sidebar-footnote strong {
     font-size: 0.86rem;
+}
+
+.sidebar-actions {
+    display: grid;
+}
+
+.sidebar-logout-button {
+    border: 1px solid rgba(238, 246, 255, 0.38);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #eff8ff;
+    font-family: 'Manrope', 'Segoe UI', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    min-height: 46px;
+    padding: 10px 12px;
+    cursor: pointer;
+}
+
+.sidebar-logout-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .admin-main {
@@ -563,7 +619,7 @@ body {
     font-size: 0.88rem;
 }
 
-.stock-form input,
+.stock-form input:not([type='checkbox']),
 .stock-form select {
     width: 100%;
     border: 1px solid #cbd8e6;
@@ -576,7 +632,7 @@ body {
     font-size: 0.9rem;
 }
 
-.stock-form input:focus,
+.stock-form input:not([type='checkbox']):focus,
 .stock-form select:focus {
     outline: none;
     border-color: #5a9fcb;
@@ -598,7 +654,9 @@ body {
 
 .stock-checkbox input {
     margin: 0;
-    width: auto;
+    width: 18px;
+    height: 18px;
+    min-height: 0;
 }
 
 .stock-form button {
@@ -1255,16 +1313,62 @@ body {
         grid-template-columns: 1fr;
     }
 
+    .mobile-menu-toggle {
+        display: inline-flex;
+    }
+
+    .mobile-sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        border: 0;
+        background: rgba(7, 21, 36, 0.38);
+        z-index: 54;
+    }
+
     .admin-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(320px, 88vw);
+        z-index: 55;
+        transform: translateX(-105%);
+        transition: transform 220ms ease;
+        overflow-y: auto;
+        border-radius: 0 16px 16px 0;
         grid-template-rows: auto auto auto;
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .admin-sidebar.is-mobile-open {
+        transform: translateX(0);
+    }
+
+    .mobile-sidebar-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        align-self: end;
+        width: 32px;
+        height: 32px;
+        border: 1px solid rgba(238, 246, 255, 0.45);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.12);
+        color: #eff8ff;
+        font-weight: 700;
+        cursor: pointer;
     }
 
     .workspace-switcher {
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .workspace-tab {
         text-align: center;
+        min-height: 56px;
+        padding: 10px 8px;
     }
 
     .workspace-tab:hover {
@@ -1295,6 +1399,50 @@ body {
 }
 
 @media (max-width: 760px) {
+    .app-shell {
+        padding: 6px;
+    }
+
+    .app-layout {
+        padding: 6px;
+        border-radius: 12px;
+        gap: 8px;
+    }
+
+    .admin-sidebar {
+        padding: 10px;
+        border-radius: 12px;
+    }
+
+    .workspace-switcher {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .workspace-tab {
+        min-height: 50px;
+        font-size: 0.82rem;
+        padding: 8px 6px;
+    }
+
+    .workspace-tab small {
+        font-size: 0.68rem;
+    }
+
+    .sidebar-kpis {
+        display: none;
+    }
+
+    .sidebar-footnote {
+        font-size: 0.8rem;
+    }
+
+    .sidebar-logout-button {
+        width: 100%;
+        min-height: 44px;
+        font-size: 0.85rem;
+    }
+
     .pos-product-grid {
         grid-template-columns: 1fr 1fr;
     }
@@ -1410,7 +1558,6 @@ body {
     .credits-grid-values,
     .module-grid-values,
     .stock-inline-grid,
-    .workspace-switcher,
     .sidebar-kpis {
         grid-template-columns: 1fr;
     }

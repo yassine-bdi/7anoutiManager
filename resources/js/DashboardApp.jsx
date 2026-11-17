@@ -305,7 +305,8 @@ async function fetchJson(endpoint, options = {}) {
 }
 
 function DashboardApp() {
-    const [activeWorkspace, setActiveWorkspace] = useState('stock');
+    const [activeWorkspace, setActiveWorkspace] = useState('finance');
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
     const [summary, setSummary] = useState(initialSummary);
     const [stockOverview, setStockOverview] = useState(initialStockOverview);
@@ -355,11 +356,13 @@ function DashboardApp() {
     const [creditsActionError, setCreditsActionError] = useState('');
     const [creditsPagination, setCreditsPagination] = useState(initialPagination);
     const [uiFeedback, setUiFeedback] = useState(null);
+    const [logoutLoading, setLogoutLoading] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const stockSearchDebounceRef = useRef(null);
     const posSearchDebounceRef = useRef(null);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 
     useEffect(() => {
         return () => {
@@ -1876,6 +1879,33 @@ function DashboardApp() {
         }
     };
 
+    const handleLogout = async () => {
+        setLogoutLoading(true);
+
+        try {
+            const response = await fetch('/logout', {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Echec deconnexion.');
+            }
+
+            window.location.href = '/login';
+        } catch (_logoutError) {
+            setUiFeedback({
+                id: Date.now(),
+                type: 'error',
+                message: 'Impossible de se deconnecter pour le moment.',
+            });
+            setLogoutLoading(false);
+        }
+    };
+
     return (
         <div className="app-shell">
             <div className="app-glow app-glow-left" aria-hidden="true" />
@@ -1902,8 +1932,43 @@ function DashboardApp() {
                 </div>
             ) : null}
 
+            <button
+                type="button"
+                className="mobile-menu-toggle"
+                onClick={() => setIsMobileSidebarOpen((current) => !current)}
+                aria-controls="dashboard-sidebar"
+                aria-expanded={isMobileSidebarOpen}
+                aria-label="Ouvrir le menu"
+            >
+                <span />
+                <span />
+                <span />
+            </button>
+
+            {isMobileSidebarOpen ? (
+                <button
+                    type="button"
+                    className="mobile-sidebar-backdrop"
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                    aria-label="Fermer le menu"
+                />
+            ) : null}
+
             <main className="app-layout">
-                <aside className="admin-sidebar" aria-label="Navigation principale">
+                <aside
+                    id="dashboard-sidebar"
+                    className={isMobileSidebarOpen ? 'admin-sidebar is-mobile-open' : 'admin-sidebar'}
+                    aria-label="Navigation principale"
+                >
+                    <button
+                        type="button"
+                        className="mobile-sidebar-close"
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                        aria-label="Fermer le menu"
+                    >
+                        x
+                    </button>
+
                     <div className="sidebar-brand">
                         <p className="eyebrow">Hanout Manager</p>
                         <p className="sidebar-brand-title">Admin Dashboard</p>
@@ -1916,7 +1981,10 @@ function DashboardApp() {
                                 key={tab.key}
                                 type="button"
                                 className={activeWorkspace === tab.key ? 'workspace-tab is-active' : 'workspace-tab'}
-                                onClick={() => setActiveWorkspace(tab.key)}
+                                onClick={() => {
+                                    setActiveWorkspace(tab.key);
+                                    setIsMobileSidebarOpen(false);
+                                }}
                             >
                                 <span>{tab.label}</span>
                                 <small>{tab.description}</small>
@@ -1942,6 +2010,17 @@ function DashboardApp() {
                     <div className="sidebar-footnote">
                         <span>Derniere maj</span>
                         <strong>{formatDateTime(summary.generated_at)}</strong>
+                    </div>
+
+                    <div className="sidebar-actions">
+                        <button
+                            type="button"
+                            className="sidebar-logout-button"
+                            onClick={handleLogout}
+                            disabled={logoutLoading}
+                        >
+                            {logoutLoading ? 'Deconnexion...' : 'Se deconnecter'}
+                        </button>
                     </div>
                 </aside>
 
@@ -1975,78 +2054,80 @@ function DashboardApp() {
                         </article>
                     </section>
 
-                    <section className="dashboard-grid" aria-label="Modules principaux">
-                        <article className="module-card card-stock">
-                            <h2>1. Gestion de stock</h2>
-                            <p className="module-value">{formatNumber(summary.stock.total_items)} references actives</p>
-                            <p className="module-meta">
-                                {formatNumber(summary.stock.low_stock_items)} articles en seuil bas - {formatNumber(stockOverview.movements_this_month)}
-                                {' '}mouvements ce mois
-                            </p>
-                            <ul>
-                                {(stockOverview.top_categories ?? []).map((category) => (
-                                    <li key={category.name}>
-                                        <span>{category.name}</span>
-                                        <span>{formatNumber(category.items)} articles</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </article>
+                    {activeWorkspace !== 'finance' ? (
+                        <section className="dashboard-grid" aria-label="Modules principaux">
+                            <article className="module-card card-stock">
+                                <h2>1. Gestion de stock</h2>
+                                <p className="module-value">{formatNumber(summary.stock.total_items)} references actives</p>
+                                <p className="module-meta">
+                                    {formatNumber(summary.stock.low_stock_items)} articles en seuil bas - {formatNumber(stockOverview.movements_this_month)}
+                                    {' '}mouvements ce mois
+                                </p>
+                                <ul>
+                                    {(stockOverview.top_categories ?? []).map((category) => (
+                                        <li key={category.name}>
+                                            <span>{category.name}</span>
+                                            <span>{formatNumber(category.items)} articles</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </article>
 
-                        <article className="module-card card-finance">
-                            <h2>2. Budget et revenus</h2>
-                            <p className="module-value">{formatCurrency(summary.finance.month_income)} revenu reel du mois</p>
-                            <p className="module-meta">
-                                Potentiel: {formatCurrency(summary.finance.potential_income)} - Depenses: {formatCurrency(summary.finance.month_expenses)} - {formatNumber(financeOverview.entries_this_month)}
-                                {' '}ecritures ce mois
-                            </p>
-                            <div className="module-grid-values">
-                                <div>
-                                    <span>Caisse disponible</span>
-                                    <strong>{formatCurrency(summary.finance.cash_in_hand)}</strong>
+                            <article className="module-card card-finance">
+                                <h2>2. Budget et revenus</h2>
+                                <p className="module-value">{formatCurrency(summary.finance.month_income)} revenu reel du mois</p>
+                                <p className="module-meta">
+                                    Potentiel: {formatCurrency(summary.finance.potential_income)} - Depenses: {formatCurrency(summary.finance.month_expenses)} - {formatNumber(financeOverview.entries_this_month)}
+                                    {' '}ecritures ce mois
+                                </p>
+                                <div className="module-grid-values">
+                                    <div>
+                                        <span>Caisse disponible</span>
+                                        <strong>{formatCurrency(summary.finance.cash_in_hand)}</strong>
+                                    </div>
+                                    <div>
+                                        <span>Resultat net</span>
+                                        <strong className={netResultClass}>{formatCurrency(summary.finance.net_result)}</strong>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span>Resultat net</span>
-                                    <strong className={netResultClass}>{formatCurrency(summary.finance.net_result)}</strong>
-                                </div>
-                            </div>
-                            <ul>
-                                {(financeOverview.top_expense_categories ?? []).map((item) => (
-                                    <li key={item.category}>
-                                        <span>{item.category}</span>
-                                        <span>{formatCurrency(item.total)}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </article>
+                                <ul>
+                                    {(financeOverview.top_expense_categories ?? []).map((item) => (
+                                        <li key={item.category}>
+                                            <span>{item.category}</span>
+                                            <span>{formatCurrency(item.total)}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </article>
 
-                        <article className="module-card card-credits">
-                            <h2>3. Credits clients</h2>
-                            <p className="module-value">{formatNumber(summary.credits.active_customers)} clients avec ardoise</p>
-                            <p className="module-meta">
-                                {formatCurrency(summary.credits.due_this_week)} a recuperer cette semaine - {formatNumber(creditsOverview.open_credits)}
-                                {' '}credits actifs
-                            </p>
-                            <div className="module-grid-values">
-                                <div>
-                                    <span>Montant total du</span>
-                                    <strong>{formatCurrency(summary.credits.total_due)}</strong>
+                            <article className="module-card card-credits">
+                                <h2>3. Credits clients</h2>
+                                <p className="module-value">{formatNumber(summary.credits.active_customers)} clients avec ardoise</p>
+                                <p className="module-meta">
+                                    {formatCurrency(summary.credits.due_this_week)} a recuperer cette semaine - {formatNumber(creditsOverview.open_credits)}
+                                    {' '}credits actifs
+                                </p>
+                                <div className="module-grid-values">
+                                    <div>
+                                        <span>Montant total du</span>
+                                        <strong>{formatCurrency(summary.credits.total_due)}</strong>
+                                    </div>
+                                    <div>
+                                        <span>Montant en retard</span>
+                                        <strong className="is-negative">{formatCurrency(summary.credits.overdue_amount)}</strong>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span>Montant en retard</span>
-                                    <strong className="is-negative">{formatCurrency(summary.credits.overdue_amount)}</strong>
-                                </div>
-                            </div>
-                            <ul>
-                                {(creditsOverview.upcoming_credits ?? []).map((item) => (
-                                    <li key={`${item.customer_name}-${item.due_date ?? 'none'}`}>
-                                        <span>{item.customer_name}</span>
-                                        <span>{formatCurrency(item.remaining_amount)}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </article>
-                    </section>
+                                <ul>
+                                    {(creditsOverview.upcoming_credits ?? []).map((item) => (
+                                        <li key={`${item.customer_name}-${item.due_date ?? 'none'}`}>
+                                            <span>{item.customer_name}</span>
+                                            <span>{formatCurrency(item.remaining_amount)}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </article>
+                        </section>
+                    ) : null}
 
                 {activeWorkspace === 'stock' ? (
                 <section className="stock-workspace" aria-label="Gestion detaillee du stock">
